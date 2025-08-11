@@ -21,6 +21,7 @@ interface AuthContextType {
   isLoading: boolean
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
+  createDemoUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -114,6 +115,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const createDemoUser = async () => {
+    try {
+      const demoUserData: User = {
+        id: "demo-user",
+        email: "demo@startupconnect.app",
+        name: "Demo User",
+        picture: undefined,
+      }
+
+      setUser(demoUserData)
+      await AsyncStorage.setItem("user", JSON.stringify(demoUserData))
+    } catch (error) {
+      console.error("Error creating demo user:", error)
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -121,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         signInWithGoogle,
         signOut,
+        createDemoUser,
       }}
     >
       {children}

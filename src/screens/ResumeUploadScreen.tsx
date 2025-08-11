@@ -4,6 +4,7 @@ import { useState } from "react"
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ActivityIndicator } from "react-native"
 import * as DocumentPicker from "expo-document-picker"
 import { theme } from "../theme/colors"
+import { useAuth } from "../context/AuthContext"
 
 interface ResumeUploadScreenProps {
   navigation: any
@@ -17,6 +18,7 @@ interface UploadedFile {
 }
 
 export default function ResumeUploadScreen({ navigation }: ResumeUploadScreenProps) {
+  const { createDemoUser } = useAuth()
   const [selectedFile, setSelectedFile] = useState<UploadedFile | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -113,10 +115,15 @@ export default function ResumeUploadScreen({ navigation }: ResumeUploadScreenPro
       //   },
       // })
 
+      // Create demo user to authenticate them
+      await createDemoUser()
+      
       Alert.alert("Success", "Resume uploaded successfully!", [
         {
           text: "Continue",
-          onPress: () => navigation.navigate("Main"),
+          onPress: () => {
+            // Navigation will be handled automatically by App.tsx when user state changes
+          },
         },
       ])
     } catch (error) {
@@ -220,7 +227,10 @@ export default function ResumeUploadScreen({ navigation }: ResumeUploadScreenPro
 
           <TouchableOpacity
             style={styles.skipButton}
-            onPress={() => navigation.navigate("Main")}
+            onPress={async () => {
+              // Create demo user even when skipping resume upload
+              await createDemoUser()
+            }}
             disabled={isUploading}
           >
             <Text style={styles.skipButtonText}>Skip for now</Text>
