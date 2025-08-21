@@ -105,11 +105,11 @@ export default function ApplicationsScreen({ navigation }: ApplicationsScreenPro
               <View style={styles.cardHeader}>
                 <View style={styles.companyInfo}>
                   <View style={styles.logoContainer}>
-                    <Text style={styles.logoText}>{application.startup.companyName.charAt(0)}</Text>
+                    <Text style={styles.logoText}>{application.startup.name?.charAt(0) || '?'}</Text>
                   </View>
                   <View style={styles.companyDetails}>
-                    <Text style={styles.companyName}>{application.startup.companyName}</Text>
-                    <Text style={styles.jobTitle}>{application.startup.jobTitle}</Text>
+                    <Text style={styles.companyName}>{application.startup.name}</Text>
+                    <Text style={styles.jobTitle}>{application.startup.job_title}</Text>
                     <Text style={styles.location}>{application.startup.location}</Text>
                   </View>
                 </View>

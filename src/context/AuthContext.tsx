@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Configure the auth request
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId: "YOUR_GOOGLE_CLIENT_ID", // TODO: Replace with actual client ID
+      clientId: "121653747416-jadqur1bveu7589f6ije0rlb991sli4j.apps.googleusercontent.com",
       scopes: ["openid", "profile", "email"],
       redirectUri: AuthSession.makeRedirectUri({
         scheme: "com.startupconnect.app",

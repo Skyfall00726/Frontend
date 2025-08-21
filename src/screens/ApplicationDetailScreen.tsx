@@ -76,13 +76,13 @@ export default function ApplicationDetailScreen({ navigation, route }: Applicati
           {/* Company Info */}
           <View style={styles.companySection}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>{application.startup.companyName.charAt(0)}</Text>
+              <Text style={styles.logoText}>{application.startup.name?.charAt(0) || '?'}</Text>
             </View>
             <View style={styles.companyInfo}>
-              <Text style={styles.companyName}>{application.startup.companyName}</Text>
-              <Text style={styles.jobTitle}>{application.startup.jobTitle}</Text>
+              <Text style={styles.companyName}>{application.startup.name}</Text>
+              <Text style={styles.jobTitle}>{application.startup.job_title}</Text>
               <Text style={styles.location}>{application.startup.location}</Text>
-              {application.startup.website && <Text style={styles.website}>{application.startup.website}</Text>}
+              {application.startup.website_url && <Text style={styles.website}>{application.startup.website_url}</Text>}
             </View>
           </View>
 
@@ -101,10 +101,10 @@ export default function ApplicationDetailScreen({ navigation, route }: Applicati
                 </Text>
               </View>
             </View>
-            {application.startup.fundingStage && (
+            {application.startup.yc_batch && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Funding:</Text>
-                <Text style={styles.detailValue}>{application.startup.fundingStage}</Text>
+                <Text style={styles.detailLabel}>YC Batch:</Text>
+                <Text style={styles.detailValue}>{application.startup.yc_batch}</Text>
               </View>
             )}
           </View>

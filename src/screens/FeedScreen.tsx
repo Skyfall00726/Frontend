@@ -1,32 +1,115 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, Alert } from "react-native"
+import { useState, useRef, useEffect } from "react"
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from "react-native"
 import Swiper from "react-native-deck-swiper"
 import { theme } from "../theme/colors"
 import { mockStartups } from "../data/mockStartups"
 import { useApplications, type Startup } from "../context/ApplicationsContext"
+import { apiService } from "../services/api"
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window")
 
 export default function FeedScreen() {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [startups] = useState(mockStartups)
+  const [startups, setStartups] = useState<Startup[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const swiperRef = useRef<Swiper<Startup>>(null)
   const { addApplication } = useApplications()
 
-  const onSwipedLeft = (cardIndex: number) => {
-    console.log("Swiped left on:", startups[cardIndex].companyName)
+  // Load startups from API
+  useEffect(() => {
+    loadStartups()
+  }, [])
+
+  const loadStartups = async (page: number = 1, append: boolean = false) => {
+    try {
+      if (!append) setLoading(true)
+      setError(null)
+
+      const response = await apiService.getFeedStartups(page, 10)
+      
+      if (response.success && response.data) {
+        const newStartups = response.data.startups
+        
+        if (append) {
+          setStartups(prev => [...prev, ...newStartups])
+        } else {
+          setStartups(newStartups)
+        }
+        
+        setHasMore(response.data.pagination.has_next)
+        setCurrentPage(page)
+      } else {
+        // Fallback to mock data if API fails
+        console.warn('API failed, using mock data:', response.error)
+        if (!append) {
+          setStartups(mockStartups)
+        }
+        setError(response.error || 'Failed to load startups')
+      }
+    } catch (err) {
+      console.error('Error loading startups:', err)
+      // Fallback to mock data
+      if (!append) {
+        setStartups(mockStartups)
+      }
+      setError('Network error - using offline data')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const onSwipedRight = (cardIndex: number) => {
+  const onSwipedLeft = async (cardIndex: number) => {
+    const startup = startups[cardIndex]
+    console.log("Swiped left on:", startup.name)
+    
+    // Record swipe action in backend
+    try {
+      await apiService.recordSwipe({
+        startup_id: startup.id,
+        action: 'pass'
+      })
+    } catch (error) {
+      console.error('Failed to record swipe:', error)
+    }
+  }
+
+  const onSwipedRight = async (cardIndex: number) => {
     const startup = startups[cardIndex]
     addApplication(startup)
-    Alert.alert(
-      "Application Added!",
-      `Your application to ${startup.companyName} has been prepared and added to your applications list.`,
-      [{ text: "OK" }],
-    )
+    
+    // Record swipe action in backend
+    try {
+      const response = await apiService.recordSwipe({
+        startup_id: startup.id,
+        action: 'like'
+      })
+      
+      if (response.success) {
+        Alert.alert(
+          "Application Added!",
+          `Your application to ${startup.name} has been prepared and added to your applications list.`,
+          [{ text: "OK" }],
+        )
+      } else {
+        Alert.alert(
+          "Application Added!",
+          `Your application to ${startup.name} has been prepared locally. (Network issue: ${response.error})`,
+          [{ text: "OK" }],
+        )
+      }
+    } catch (error) {
+      console.error('Failed to record swipe:', error)
+      Alert.alert(
+        "Application Added!",
+        `Your application to ${startup.name} has been prepared locally.`,
+        [{ text: "OK" }],
+      )
+    }
   }
 
   const onSwipedAll = () => {
@@ -48,24 +131,40 @@ export default function FeedScreen() {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>{startup.companyName.charAt(0)}</Text>
+            <Text style={styles.logoText}>{startup.name?.charAt(0) || '?'}</Text>
           </View>
         </View>
 
         <View style={styles.cardContent}>
-          <Text style={styles.companyName}>{startup.companyName}</Text>
-          <Text style={styles.jobTitle}>{startup.jobTitle}</Text>
+          <Text style={styles.companyName}>{startup.name || 'Company Name'}</Text>
+          <Text style={styles.jobTitle}>{startup.job_title || 'Job Title'}</Text>
           <Text style={styles.location}>{startup.location}</Text>
 
-          {startup.fundingStage && (
+          {startup.yc_batch && (
             <View style={styles.fundingBadge}>
-              <Text style={styles.fundingText}>{startup.fundingStage}</Text>
+              <Text style={styles.fundingText}>{startup.yc_batch}</Text>
+            </View>
+          )}
+
+          {startup.job_salary && (
+            <View style={styles.salaryBadge}>
+              <Text style={styles.salaryText}>{startup.job_salary}</Text>
             </View>
           )}
 
           <Text style={styles.description}>{startup.description}</Text>
 
-          {startup.website && <Text style={styles.website}>{startup.website}</Text>}
+          {startup.website_url && <Text style={styles.website}>{startup.website_url}</Text>}
+
+          {startup.tags.length > 0 && (
+            <View style={styles.tagsContainer}>
+              {startup.tags.slice(0, 3).map((tag, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.cardFooter}>
@@ -93,12 +192,30 @@ export default function FeedScreen() {
     )
   }
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color={theme.colors.navy} />
+          <Text style={styles.loadingText}>Loading startups...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   if (startups.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateTitle}>No Startups Available</Text>
-          <Text style={styles.emptyStateText}>Please check back later for new opportunities.</Text>
+          <Text style={styles.emptyStateText}>
+            {error ? `Error: ${error}` : "Please check back later for new opportunities."}
+          </Text>
+          {error && (
+            <TouchableOpacity style={styles.retryButton} onPress={() => loadStartups()}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
     )
@@ -121,7 +238,7 @@ export default function FeedScreen() {
           onSwipedLeft={onSwipedLeft}
           onSwipedRight={onSwipedRight}
           onSwipedAll={onSwipedAll}
-          onSwiped={(cardIndex) => setCurrentIndex(cardIndex + 1)}
+          onSwiped={(cardIndex: number) => setCurrentIndex(cardIndex + 1)}
           cardIndex={0}
           backgroundColor="transparent"
           stackSize={2}
@@ -280,6 +397,37 @@ const styles = StyleSheet.create({
     color: theme.colors.navy,
     fontWeight: "600",
   },
+  salaryBadge: {
+    backgroundColor: theme.colors.success,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    alignSelf: "center",
+    marginBottom: theme.spacing.md,
+  },
+  salaryText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.white,
+    fontWeight: "600",
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    marginBottom: theme.spacing.md,
+    gap: theme.spacing.xs,
+  },
+  tag: {
+    backgroundColor: theme.colors.lightGray,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  tagText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.gray,
+    fontWeight: "500",
+  },
   description: {
     fontSize: theme.fontSize.md,
     color: theme.colors.gray,
@@ -399,5 +547,28 @@ const styles = StyleSheet.create({
     color: theme.colors.gray,
     textAlign: "center",
     lineHeight: 22,
+    marginBottom: theme.spacing.lg,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.lg,
+  },
+  loadingText: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.gray,
+    marginTop: theme.spacing.md,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.navy,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+  },
+  retryButtonText: {
+    fontSize: theme.fontSize.md,
+    color: theme.colors.white,
+    fontWeight: "600",
   },
 })

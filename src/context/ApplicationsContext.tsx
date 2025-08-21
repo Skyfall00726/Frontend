@@ -5,13 +5,22 @@ import { createContext, useContext, useState } from "react"
 
 export interface Startup {
   id: string
-  companyName: string
-  jobTitle: string
+  name: string // Company name from backend API
   description: string
+  website_url?: string
   location: string
-  logo?: string
-  website?: string
-  fundingStage?: string
+  industry?: string
+  logo_url?: string
+  founded_year?: number
+  yc_batch?: string
+  tags: string[]
+  founders: string[]
+  // Job-specific fields (from jobs table)
+  job_title: string
+  job_salary?: string
+  job_info?: string
+  job_description?: string
+  job_link?: string
 }
 
 export interface Application {
@@ -64,13 +73,13 @@ export function ApplicationsProvider({ children }: { children: React.ReactNode }
   }
 
   const generateEmailContent = (startup: Startup): string => {
-    return `Subject: Application for ${startup.jobTitle} at ${startup.companyName}
+    return `Subject: Application for ${startup.job_title} at ${startup.name}
 
-Dear ${startup.companyName} Team,
+Dear ${startup.name} Team,
 
-I hope this email finds you well. I am writing to express my strong interest in the ${startup.jobTitle} position at ${startup.companyName}.
+I hope this email finds you well. I am writing to express my strong interest in the ${startup.job_title} position at ${startup.name}.
 
-Based on my background and skills, I believe I would be a valuable addition to your team. I am particularly excited about the opportunity to contribute to ${startup.companyName}'s mission and growth.
+Based on my background and skills, I believe I would be a valuable addition to your team. I am particularly excited about the opportunity to contribute to ${startup.name}'s mission and growth.
 
 I have attached my resume for your review and would welcome the opportunity to discuss how my experience aligns with your needs.
 
